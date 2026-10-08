@@ -1,3 +1,5 @@
+const thermalRoofUrl = new URL('../thermal_roof.jpg', import.meta.url).href;
+
 export class UavInspector {
   constructor(simEngine, digitalTwinView, uavController) {
     this.simEngine = simEngine;
@@ -179,7 +181,7 @@ export class UavInspector {
     if (detectionActive) {
       if (!this.realThermalImg) {
         this.realThermalImg = new Image();
-        this.realThermalImg.src = '/thermal_roof.jpg';
+        this.realThermalImg.src = thermalRoofUrl;
       }
       if (this.realThermalImg.complete && this.realThermalImg.naturalWidth > 0) {
         this.thermalCtx.drawImage(this.realThermalImg, 0, 0, w, h);
@@ -187,9 +189,11 @@ export class UavInspector {
         this.thermalCtx.fillStyle = '#1e1b4b';
         this.thermalCtx.fillRect(0, 0, w, h);
       }
+      const personCount = state.target.id === 'H003' ? 3 : 1;
+      const detectionLabel = `${personCount} ${personCount === 1 ? 'PERSON' : 'PEOPLE'}`;
       boxes.innerHTML = `
         <div class="th-bounding-box" style="left: ${w/2 - 20}px; top: ${h/2 - 30}px; width: 40px; height: 40px;">
-          <div class="th-box-label" style="background:#fde047; color:#000;">HUMAN ${maxTemperature.toFixed(1)}°C (0.98)</div>
+          <div class="th-box-label" style="background:#fde047; color:#000;">${detectionLabel} ${maxTemperature.toFixed(1)}°C (0.98)</div>
         </div>
       `;
     } else {

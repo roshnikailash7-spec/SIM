@@ -89,6 +89,7 @@ class SensoraApp {
     this.lastPredictionSignature = '';
     this.lastStageIndex = this.simEngine.currentStageIndex;
     this.rescuedHouseholds = new Set();
+    this.pendingRescueTargets = [];
     this.swarm = [];
     this.swarmAnimationId = null;
     this.swarmDeployed = false;
@@ -130,9 +131,12 @@ class SensoraApp {
     if (rescueQueueBody) {
       rescueQueueBody.addEventListener('click', (event) => {
         const button = event.target.closest('[data-mark-rescued]');
-        if (!button) return;
-        event.stopPropagation();
-        this.completeRescue(button.dataset.markRescued);
+        if (button) {
+          this.completeRescue(button.dataset.markRescued);
+          return;
+        }
+        const row = event.target.closest('[data-household-id]');
+        if (row) document.getElementById(`house-${row.dataset.householdId}`)?.click();
       });
     }
 
@@ -438,17 +442,19 @@ class SensoraApp {
     tbody.innerHTML = sorted.map(h => {
       const color = h.droneConfirmed ? '#ef4444' : (h.riskLevel === 'HIGH' ? '#f97316' : '#94a3b8');
       const fw = h.droneConfirmed ? 'bold' : 'normal';
-      const isRescueTarget = h.id === 'H003' && h.droneConfirmed;
+      const isRescueTarget = h.droneConfirmed && !h.rescued;
       const canCompleteRescue = isRescueTarget && this.swarmArrived && this.swarmRescueTargetId === h.id;
       const status = h.rescued
         ? 'RESCUED - SWARM RTB'
         : isRescueTarget
           ? canCompleteRescue
             ? `<button class="btn-micro" type="button" data-mark-rescued="${h.id}">MARK RESCUED</button>`
-            : 'SWARM EN ROUTE / ON STATION'
+            : this.swarmRescueTargetId === h.id
+              ? 'SWARM EN ROUTE / ON STATION'
+              : 'RESCUE QUEUED'
           : h.evacStatus;
       return `
-        <tr style="color: ${color}; font-weight: ${fw}; cursor: pointer;" onclick="document.getElementById('house-${h.id}').click()">
+        <tr data-household-id="${h.id}" style="color: ${color}; font-weight: ${fw}; cursor: pointer;">
           <td>${h.id} ${h.droneConfirmed ? '★' : ''}</td>
           <td>${h.riskLevel} (${h.personalScore})</td>
           <td>${status}</td>
@@ -459,7 +465,7 @@ class SensoraApp {
 
   completeRescue(houseId) {
     const household = this.simEngine.getState().households.find(item => item.id === houseId);
-    if (!household || !household.droneConfirmed || household.rescued) return;
+    if (!household || !household.droneConfirmed || household.rescued || !this.swarmArrived || this.swarmRescueTargetId !== houseId) return;
 
     this.rescuedHouseholds.add(houseId);
     this.simEngine.markHouseholdRescued(houseId);
@@ -488,6 +494,7 @@ class SensoraApp {
     this.swarmDeployed = false;
     this.swarmArrived = false;
     this.swarmRescueTargetId = null;
+    this.pendingRescueTargets = [];
     this.rescuedHouseholds.clear();
 
     const detectionsBody = document.getElementById('uav-detections-body');
@@ -610,11 +617,17 @@ class SensoraApp {
 
     const h = this.simEngine.getState().households.find(item => item.id === houseId);
     const location = this.getHouseholdLocation(houseId);
+    const uavTab = document.querySelector('.console-tab-btn[data-tab="tab-rudranetra"]');
+    if (uavTab && !uavTab.classList.contains('active')) {
+      uavTab.click();
+    }
 
-    // NEW LOGIC: Lock and Swarm for H003 (or High risk with trapped humans)
-    if (h && houseId === 'H003') {
-       // Spawn Swarm to stay with humans
-       this.deploySwarm(houseId);
+    if (h) {
+      if (!this.swarmDeployed) {
+        this.deploySwarm(houseId);
+      } else if (this.swarmRescueTargetId !== houseId && !this.pendingRescueTargets.includes(houseId)) {
+        this.pendingRescueTargets.push(houseId);
+      }
     }
 
     const tbody = document.getElementById('uav-detections-body');
@@ -624,7 +637,8 @@ class SensoraApp {
       }
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const row = document.createElement('tr');
-      const status = houseId === 'H003' ? '3 HUMANS DETECTED' : 'THERMAL SIGNATURE';
+      const personCount = houseId === 'H003' ? 3 : 1;
+      const status = `${personCount} ${personCount === 1 ? 'PERSON' : 'PEOPLE'} DETECTED`;
       row.innerHTML = `<td>${houseId}</td><td>${location}</td><td>${timeStr}</td><td><span style="color:#ef4444;font-weight:bold;">${status}</span></td>`;
       tbody.prepend(row);
     }
@@ -633,13 +647,9 @@ class SensoraApp {
     if (feedEl) {
       const stepEl = document.createElement('div');
       stepEl.className = 'ai-step done';
-      let title = `[RUDRANETRA] Drone Survey at ${houseId}`;
-      let desc = `Aerial flood validation confirmed. High precision footprint matched.`;
-      
-      if (h && houseId === 'H003') {
-        title = `[CRITICAL ALERT] Humans Detected at ${houseId}`;
-        desc = `Thermal scanner detected 3 people stranded on the roof. ${location} sent to Rescue Command. Five-drone swarm dispatched; lead drone holds over the people until rescue is confirmed.`;
-      }
+      const personCount = houseId === 'H003' ? 3 : 1;
+      const title = `[CRITICAL ALERT] ${personCount} ${personCount === 1 ? 'Person' : 'People'} Detected at ${houseId}`;
+      const desc = `Thermal scanner detected ${personCount} ${personCount === 1 ? 'person' : 'people'} stranded at ${location}. Location sent to Rescue Command. Five-drone swarm ${this.swarmRescueTargetId === houseId ? 'dispatched' : 'queued'}; lead drone stays on station until rescue is confirmed.`;
       
       stepEl.innerHTML = `<div class="ai-step-indicator"><svg class="icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
         <div class="ai-step-content">
@@ -745,6 +755,10 @@ class SensoraApp {
         this.swarmArrived = false;
         this.swarmRescueTargetId = null;
         this.swarmAnimationId = null;
+        const nextTargetId = this.pendingRescueTargets.shift();
+        if (nextTargetId) {
+          this.deploySwarm(nextTargetId);
+        }
         return;
       }
       this.swarmAnimationId = requestAnimationFrame(animateSwarm);
