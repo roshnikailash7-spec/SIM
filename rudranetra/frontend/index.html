@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUDRANETRA | Ground Station</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Left Panel -->
+        <div class="panel left-panel glass">
+            <h1 class="logo">RUDRANETRA</h1>
+            <div class="status-card">
+                <h3>UAV STATUS</h3>
+                <div class="status-grid">
+                    <div class="stat-box">
+                        <span class="label">STATE</span>
+                        <span class="value" id="val-state">PARKED</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">BATTERY</span>
+                        <span class="value" id="val-battery">100%</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">ALTITUDE</span>
+                        <span class="value" id="val-alt">0.0 m</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="label">SPEED</span>
+                        <span class="value" id="val-speed">0.0 m/s</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mission-card">
+                <h3>MISSION CONTROL</h3>
+                <button id="btn-start" class="btn primary">DISPATCH UAV</button>
+            </div>
+
+            <div class="log-card" style="margin-top: 20px; display: flex; flex-direction: column; flex-grow: 1;">
+                <h3>EVENT LOG</h3>
+                <div id="event-log" class="log-container"></div>
+            </div>
+        </div>
+
+        <!-- Center Map -->
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="panel right-panel glass">
+            <h3>ASSESSMENT SUMMARY</h3>
+            <div class="summary-grid">
+                <div class="stat-box">
+                    <span class="label">PEOPLE DETECTED</span>
+                    <span class="value highlight" id="val-people">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">VEHICLES</span>
+                    <span class="value" id="val-vehicles">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">FLOOD AREA</span>
+                    <span class="value" id="val-flood">0.0 km²</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">ROADS BLOCKED</span>
+                    <span class="value" id="val-roads">0</span>
+                </div>
+            </div>
+            
+            <h3 class="mt-20">ZONE PRIORITY</h3>
+            <table class="priority-table">
+                <thead>
+                    <tr><th>ZONE</th><th>SCORE</th><th>LEVEL</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Zone 04</td><td id="zone-score">--</td><td id="zone-level">PENDING</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
